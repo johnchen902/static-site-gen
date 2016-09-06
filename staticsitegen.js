@@ -105,6 +105,8 @@ file.walkSync(input, function(start, dirs, names) {
     }
 
     names.forEach(function(fileName) {
+        if(fileName[0] == '.')
+            return;
         var ext = path.extname(fileName);
         var inFile = path.join(start, fileName);
         if(ext != ".raw") {
