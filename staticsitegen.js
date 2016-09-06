@@ -80,6 +80,7 @@ function highlight(data) {
 
 var input = argv.input || "input";
 var output = argv.output || "output";
+var site = argv.site || "/blog";
 var allRaws = [];
 
 file.walkSync(input, function(start, dirs, names) {
@@ -112,12 +113,14 @@ file.walkSync(input, function(start, dirs, names) {
         } else {
             try {
                 let raw = readRawFile(inFile);
+                raw.site = site;
+                allRaws.push(raw);
+
                 let templatePath = path.join(
                         input, "_template", raw.template);
                 let template = readTemplate(templatePath);
                 let result = template(raw);
                 raw.output = result = highlight(result) || result;
-                allRaws.push(raw);
 
                 let outFile = path.join(outStart, raw.path);
                 raw.webpath = path.join(relStart, raw.path);
@@ -135,7 +138,8 @@ try {
     let template = readTemplate(templatePath);
     let result = template({
         raws: allRaws,
-        dateFormat: dateFormat
+        dateFormat: dateFormat,
+        site: site,
     });
     result = highlight(result) || result;
 
