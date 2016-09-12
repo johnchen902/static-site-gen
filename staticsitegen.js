@@ -80,77 +80,66 @@ function highlight(data) {
 
 var input = argv.input || "input";
 var output = argv.output || "output";
-var site = argv.site || "/blog";
+var config;
+try {
+    config = readRawFile(path.join(input, ".config"));
+} catch (err) {
+    console.error(err);
+    config = {};
+}
 var allRaws = [];
 
 file.walkSync(input, function(start, dirs, names) {
     {
-        let index = dirs.indexOf("_template");
-        if(index > -1)
-            dirs.splice(index, 1);
+        let filtered = dirs.filter(x => x[0] != '.');
+        Array.prototype.splice.apply(dirs,
+            [0, dirs.length].concat(filtered));
     }
 
     var relStart = path.relative(input, start);
     var outStart = path.join(output, relStart);
-    file.mkdirsSync(outStart);
-    try {
-        if(!fs.lstatSync(outStart).isDirectory()) {
-            dirs.length = 0;
-            return;
-        }
-    } catch (err) {
-        console.error(err);
-        dirs.length = 0;
-        return;
-    }
 
     names.forEach(function(fileName) {
         if(fileName[0] == '.')
             return;
         var ext = path.extname(fileName);
         var inFile = path.join(start, fileName);
-        if(ext != ".raw") {
-            let outFile = path.join(outStart, fileName);
-            copyFile(inFile, outFile);
-        } else {
-            try {
+        try {
+            if(ext != ".raw") {
+                let outFile = path.join(outStart, fileName);
+                file.mkdirsSync(outStart);
+                copyFile(inFile, outFile);
+            } else {
                 let raw = readRawFile(inFile);
-                raw.site = site;
+                raw.outFile = path.join(outStart, raw.path);
+                raw.webPath = path.join(relStart, raw.path);
                 allRaws.push(raw);
-
-                let templatePath = path.join(
-                        input, "_template", raw.template);
-                let template = readTemplate(templatePath);
-                let result = template(raw);
-                raw.output = result = highlight(result) || result;
-
-                let outFile = path.join(outStart, raw.path);
-                raw.webpath = path.join(relStart, raw.path);
-                file.mkdirsSync(path.dirname(outFile));
-                fs.writeFile(outFile, result,
-                        err => err && console.error(err));
-            } catch (err) {
-                console.error(err);
             }
+        } catch (err) {
+            console.error(err);
         }
     });
 });
-try {
-    let templatePath = path.join(input, "_template", "index");
-    let template = readTemplate(templatePath);
-    let result = template({
-        raws: allRaws,
-        dateFormat: dateFormat,
-        site: site,
-    });
-    result = highlight(result) || result;
 
-    let outFile = path.join(output, "index.html");
-    fs.writeFile(outFile, result,
+allRaws.forEach(function(raw) {
+    var templatePath = path.join(input, ".template", raw.template);
+    var template = readTemplate(templatePath);
+    var result = template(Object.assign({}, config, raw, {
+        allRaws: allRaws,
+        dateFormat: dateFormat,
+    }));
+    if(!raw.nohighlight)
+        result = highlight(result);
+
+    var outFile = raw.outFile;
+    try {
+        file.mkdirsSync(path.dirname(outFile));
+        fs.writeFile(outFile, result,
                  err => err && console.error(err));
-} catch(err) {
-    console.error(err);
-}
+    } catch (err) {
+        console.error(err);
+    }
+});
 
 ;
 })();
