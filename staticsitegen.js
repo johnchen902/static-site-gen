@@ -1,9 +1,6 @@
 #!/usr/bin/env node
-(function() {
-;
-
 const argv = require("minimist")(process.argv.slice(2), {
-    alias : { "i" : "input" }
+    alias : { "i" : "input", "o" : "output" }
 });
 const file = require("file");
 const fs = require("fs");
@@ -78,13 +75,20 @@ function highlight(data) {
     return data;
 }
 
-var input = argv.input || "input";
-var output = argv.output || "output";
+var input = argv.input;
+var output = argv.output;
+if(!input)
+    console.error("Error: Missing input directory");
+if(!output)
+    console.error("Error: Missing output directory");
+if(!input || !output)
+    process.exit(1);
+
 var config;
 try {
     config = readRawFile(path.join(input, ".config"));
 } catch (err) {
-    console.error(err);
+    console.warn("Warning: Cannot read config");
     config = {};
 }
 var allRaws = [];
@@ -141,5 +145,3 @@ allRaws.forEach(function(raw) {
     }
 });
 
-;
-})();
